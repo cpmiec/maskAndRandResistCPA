@@ -2,7 +2,11 @@
 # Automatically-generated file. Do not edit or delete the file
 ################################################################################
 
+src\aes.c
+
 src\ASF\xmega\drivers\usart\usart.c
+
+src\chaoticEnc.c
 
 src\char_int.c
 

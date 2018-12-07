@@ -1,8 +1,9 @@
 /**
  * \file
  *
- * \使用ASF框架构建Chipwhisperer加密系统框架
+ *  使用ASF框架构建Chipwhisperer加密系统框架
 	能耗统计均触发及结束均放在加密程序中
+	
  *
  */
 
@@ -31,6 +32,7 @@
  */
 #include <asf.h>
 #include "char_int.h"
+#include "aes.h"
 #define USART_T IOPORT_CREATE_PIN(PORTC,3)//创建串口发送引脚
 #define USART_R IOPORT_CREATE_PIN(PORTC,2)//创建串口接收引脚
 #define TRIGGER IOPORT_CREATE_PIN(PORTA,0)//创建触发引脚
@@ -39,22 +41,34 @@
 
 #define KEY_LENGTH 16
 #define BUFLEN KEY_LENGTH*4
+#define ROUND 3
 
 uint8_t memory[BUFLEN];
 char asciibuf[BUFLEN];
-uint8_t pt[KEY_LENGTH];//明文
-uint8_t key[KEY_LENGTH];//密钥
+uint8_t pt[KEY_LENGTH];//plaintext
+uint8_t key[KEY_LENGTH];//secret key
+uint8_t cip[KEY_LENGTH];//cipher
+uint16_t timeCount=0,clkCount=0;
+
+extern uint8_t seqCtrl[16];
+extern uint8_t RDKey[ROUND*16];
+extern uint8_t intermediate[16];
+extern uint8_t add_mask[16];
+extern uint8_t mul_mask_2;
 
 void CWPlatInit(void);
+static void timeConsum(void);
 void sendUint16(uint16_t value16);//通过串口返回一个uint16类型的数据
 void sendUint8(uint8_t value8);//通过串口返回一个uint8类型的数据
 
-void encryptionInit(void);
-void encryption(uint8_t ciphertext[], uint8_t plaintext[]);
+void encInit(void);
+void chaoticEnc(uint8_t ciphertext[], uint8_t plaintext[]);
+void maskEnc(uint8_t ciphertext[], uint8_t plaintext[]);
+void aesEnc(void);
 
 int main (void)
 {
-	uint16_t timeCost=0;
+	uint16_t restClk=0;
 	//初始化平台
 	CWPlatInit();
 	
@@ -106,17 +120,22 @@ int main (void)
 				hex_decode(asciibuf,ptr,pt);
 				//**************进行加密**************//
 				tc_write_count(&TCC0,0);//清零计数器
+				tc_write_clock_source(&TCC0,TC_CLKSEL_DIV1_gc);//开始计时
 				
-				encryptionInit();//加密准备工作
-				//ioport_set_pin_high(TRIGGER);//置高 PA0，触发能耗统计，
+				encInit();//加密准备工作
+				ioport_set_pin_high(TRIGGER);//置高 PA0，触发能耗统计，
 				
-				encryption(pt,pt);
+				//chaoticEnc(cip,pt);
+				maskEnc(cip,pt);
+				//aesEnc();
 				
-				timeCost=tc_read_count(&TCC0);//定时结束
-				//ioport_set_pin_low(TRIGGER);//置零 PA0，结束能耗统计
+				restClk=tc_read_count(&TCC0);//定时结束
+				tc_set_overflow_interrupt_level(&TCC0, TC_INT_LVL_OFF);//停止中断
+				tc_write_clock_source(&TCC0,TC_CLKSEL_OFF_gc);//停止计时器
+				ioport_set_pin_low(TRIGGER);//置零 PA0，结束能耗统计
 				
 				//***********将密文转化为字符*********//
-				hex_print(pt,16,asciibuf);
+				hex_print(cip,16,asciibuf);
 				//*************串口发送密文***********//
 				usart_serial_putchar(USART_SERIAL,'r');
 				for(uint8_t i=0;i<32;i++)
@@ -125,8 +144,9 @@ int main (void)
 				}
 				usart_serial_putchar(USART_SERIAL,'\n');
 				
-				sendUint16(timeCost);//返回时间消耗
-				sendUint8(CLK.CTRL);
+				sendUint16(timeCount);//返回时间消耗
+				sendUint16(restClk);//返回时间消耗
+				//sendUint8(mul_mask_2);
 				state=IDLE;
 			}
 			else
@@ -168,12 +188,27 @@ void CWPlatInit( void )
 		.stopbits = USART_SERIAL_STOP_BIT
 	};
 	usart_serial_init(USART_SERIAL, &usart_options);
+	
 	//定时器初始化设置
+	pmic_init();
 	tc_enable(&TCC0);
+	tc_set_overflow_interrupt_callback(&TCC0, timeConsum);
 	tc_set_wgm(&TCC0,TC_WG_NORMAL);
+	tc_write_period(&TCC0, BOARD_XOSC_HZ/10000);//0.1ms
+	tc_set_overflow_interrupt_level(&TCC0, TC_INT_LVL_LO);
+	cpu_irq_enable();
 	tc_set_direction(&TCC0,TC_UP);
-	tc_write_clock_source(&TCC0,TC_CLKSEL_DIV4_gc);//开始计时
+	//tc_write_clock_source(&TCC0,TC_CLKSEL_DIV1_gc);//开始计时
 }
+
+static void timeConsum(void)
+{
+	timeCount++;
+	clkCount++;
+
+	tc_clear_overflow(&TCC0);
+}
+
 void sendUint16(uint16_t value16)//通过串口返回一个uint16类型的数据
 {
 	uint8_t valueBuff[5];
@@ -195,3 +230,11 @@ void sendUint8(uint8_t value8)//通过串口返回一个8bit寄存器的状态
 	usart_serial_putchar(USART_SERIAL,'\n');
 }
 
+void aesEnc(void)
+{
+	uint8_t *w; // expanded key
+
+	w = aes_init(sizeof(key));
+	aes_key_expansion(key, w);
+	aes_cipher(pt,cip,w);
+}

@@ -17,7 +17,7 @@ uint8_t RDKey[ROUND*16];//Round key
 
 float seed = 0;//Éú³ÉÑÚÂëËùĞèÖÖ×Ó
 uint8_t s_mask_1, s_mask_2,add_mask[16],mul_mask_1,mul_mask_2;//ËùÓÃÑÚÂë
-uint8_t FLAG[16]={0}, SEQUENCE[16]={0};
+uint8_t seqCtrl[16]={0};//randomize the sequence of the s-box and 
 uint8_t msbox[256];//ÑÚÂësbox
 uint8_t sbox[256] = {//ÏßĞÔÌæ»»±í
 	//  0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -70,5 +70,6 @@ void catmap(uint8_t origin[], uint8_t count, uint8_t a, uint8_t b);//a,b:Ã¨Ó³ÉäÏ
 void mask_gen(float x0);//Éú³ÉÑÚÂë
 void cons_sbox(uint8_t mask_before, uint8_t mask_after);//construct_sbox¹¹Ôì S-box
 void mask_all(uint8_t[], uint8_t mask);//¶ÔÊı×éµÄÈ«ÌåÊ¹ÓÃmask½øĞĞÑÚÂë
+void genDiffNum(float xn,float a,uint8_t valueRange, uint8_t randSeq[]);
 
 #endif /* MASKEDCHAOTICENC_H_ */

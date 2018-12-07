@@ -12,11 +12,11 @@ void sendUint16(uint16_t value16);//通过串口返回一个uint16类型的数据
 
 uint8_t intermediate[16];
 
-void encryptionInit( void )
+void encInit( void )
 {
 	roundKeyGen((float)0.5987, RDKey);
 }
-void encryption(uint8_t ciphertext[], uint8_t plaintext[])
+void maskEnc(uint8_t ciphertext[], uint8_t plaintext[])
 {
 	for (uint8_t i = 0; i < 16; i++)
 		intermediate[i] = plaintext[i];
@@ -35,7 +35,7 @@ void encryption(uint8_t ciphertext[], uint8_t plaintext[])
 		catmap(intermediate, 1, 1, 1);
 	}
 	mask_all(intermediate,s_mask_1);
-	
+
 	ioport_set_pin_low(TRIGGER);//置零 PA0，触发能耗统计停止
 	
 	for (uint8_t i = 0; i < 16; i++)
@@ -54,6 +54,12 @@ void roundKeyGen(float x0, uint8_t randnum[])//num指丢弃前多少个值
 			xn = tentn(xn, a);
 		}
 	}
+	
+	for (uint8_t i = 0; i < 100; i++)
+	{
+		xn=tentn(xn,a);
+	}
+	
 	for (uint8_t i = 0; i < 16 * ROUND; i++)
 	{
 		xn = tentn(xn, a);
@@ -70,7 +76,7 @@ void mask_gen(float x0)//生成掩码
 	for (uint8_t i = 0; i < 16; i++)
 	{
 		a = (float)0.51 + (float)0.001*intermediate[i];
-		for (uint8_t j = 0; j < 5; j++)
+		for (uint8_t j = 0; j < 10; j++)
 		{
 			xn = tentn(xn, a);
 		}
@@ -87,13 +93,51 @@ void mask_gen(float x0)//生成掩码
 	}
 	xn = tentn(xn, a);
 	mul_mask_1 = (uint8_t)(255*xn);
-	do 
+	do //generate the non-zero value used for mul-mask
 	{
 		xn = tentn(xn, a);
 	} while ((mul_mask_2 = (uint8_t)(255*xn))==0);
-	
-	xn = tentn(xn, a);
+	genDiffNum(xn,a,16,seqCtrl);
 }
+
+void genDiffNum(float xn,float a,uint8_t valueRange, uint8_t randSeq[])//generate 16 different values between 0-valueRange-1
+{
+	
+	uint8_t nonZeroCount=0, randIndex=0, randTem=0;
+	uint8_t *randFlag;
+	randFlag=(uint8_t*)malloc(sizeof(uint8_t)*valueRange);
+	for (uint8_t i=0;i<16;i++)
+	{
+		randFlag[i]=0;
+	}
+	while(nonZeroCount<16)//generate 16 different values.
+	{
+		for (uint8_t i=0;i<2;i++)
+		{
+			xn = tentn(xn, a);
+		}
+			
+		randTem=((uint8_t)(255*xn))%valueRange;
+		if (randFlag[randTem]==0)
+		{
+			randSeq[randIndex]=randTem;
+			randFlag[randTem]=1;
+			randIndex++;
+			}else{
+			xn=(float)(0.9)*xn+0.05;
+		}
+		
+		//check out whether all the values are generated.	
+		nonZeroCount=0;
+		for (uint8_t i = 0; i < valueRange ; i++)
+		{
+			nonZeroCount+=randFlag[i];
+		}
+	}
+	free(randFlag);
+	randFlag=NULL;
+}
+
 //**************************构建新的sbox**************************//
 void cons_sbox(uint8_t mask_in, uint8_t mask_out)//construct_sbox构造 S-box
 {
@@ -108,20 +152,20 @@ void mask_all(uint8_t arr[], uint8_t mask)//对数组的全体使用mask进行掩码
 }
 
 //**************************Add Round Key*****************************//
-void addroundkey(uint8_t	*interarray, uint8_t *roundkey)//
+void addroundkey(uint8_t *interarray, uint8_t *roundkey)//
 {
-	for (uint8_t index = 0; index < 16; index++)
+	for (uint8_t i = 0; i < 16; i++)
 	{
-		*(interarray + index) = (*(interarray + index)) ^ (*(roundkey + index));
+		interarray[seqCtrl[i]]^=roundkey[seqCtrl[i]];
 	}
 }
 
 //**************************S-box变换********************************//
 void getboxvalue(uint8_t interarray[], uint8_t box[])//进行S-box正变换或者反变换
 {
-	for (uint8_t index = 0; index < 16; index++)
+	for (uint8_t i = 0; i < 16; i++)
 	{
-		interarray[index] = box[interarray[index]];
+		interarray[seqCtrl[i]] = box[interarray[seqCtrl[i]]];
 	}
 }
 //*************************扩散环节**********************************//
