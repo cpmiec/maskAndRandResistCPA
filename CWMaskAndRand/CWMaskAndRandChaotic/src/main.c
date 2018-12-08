@@ -33,6 +33,7 @@
 #include <asf.h>
 #include "char_int.h"
 #include "aes.h"
+
 #define USART_T IOPORT_CREATE_PIN(PORTC,3)//创建串口发送引脚
 #define USART_R IOPORT_CREATE_PIN(PORTC,2)//创建串口接收引脚
 #define TRIGGER IOPORT_CREATE_PIN(PORTA,0)//创建触发引脚
@@ -122,12 +123,14 @@ int main (void)
 				tc_write_count(&TCC0,0);//清零计数器
 				tc_write_clock_source(&TCC0,TC_CLKSEL_DIV1_gc);//开始计时
 				
-				encInit();//加密准备工作
+				//encInit();//加密准备工作
 				ioport_set_pin_high(TRIGGER);//置高 PA0，触发能耗统计，
 				
+				
 				//chaoticEnc(cip,pt);
-				maskEnc(cip,pt);
-				//aesEnc();
+				//maskEnc(cip,pt);
+				aesEnc();
+				//KeyExpansion(key);
 				
 				restClk=tc_read_count(&TCC0);//定时结束
 				tc_set_overflow_interrupt_level(&TCC0, TC_INT_LVL_OFF);//停止中断
