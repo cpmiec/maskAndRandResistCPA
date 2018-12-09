@@ -30,9 +30,29 @@
 /*
  * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
  */
+//#define CIPHERAES
+//#define CIPHERLUO
+#define CIPHERLUOMASKED
+//#define CIPHERTONG
+
 #include <asf.h>
 #include "char_int.h"
-#include "aes.h"
+
+#ifdef CIPHERAES
+#include "cipherAES.h"
+#endif
+
+#ifdef CIPHERLUO
+#include "cipherLuo.h"
+#endif
+
+#ifdef CIPHERLUOMASKED
+#include "cipherLuoMasked.h"
+#endif
+
+#ifdef CIPHERTONG
+#include "cipherTong.h"
+#endif
 
 #define USART_T IOPORT_CREATE_PIN(PORTC,3)//创建串口发送引脚
 #define USART_R IOPORT_CREATE_PIN(PORTC,2)//创建串口接收引脚
@@ -66,6 +86,8 @@ void encInit(void);
 void chaoticEnc(uint8_t ciphertext[], uint8_t plaintext[]);
 void maskEnc(uint8_t ciphertext[], uint8_t plaintext[]);
 void aesEnc(void);
+
+void encryption(uint8_t* plaintext, uint8_t* ciphertext);
 
 int main (void)
 {
@@ -123,19 +145,28 @@ int main (void)
 				tc_write_count(&TCC0,0);//清零计数器
 				tc_write_clock_source(&TCC0,TC_CLKSEL_DIV1_gc);//开始计时
 				
-				//encInit();//加密准备工作
-				ioport_set_pin_high(TRIGGER);//置高 PA0，触发能耗统计，
+				//ioport_set_pin_high(TRIGGER);//置高 PA0，触发能耗统计，
 				
+				#ifdef CIPHERAES
+				encAES(pt,cip);
+				#endif
 				
-				//chaoticEnc(cip,pt);
-				//maskEnc(cip,pt);
-				aesEnc();
-				//KeyExpansion(key);
+				#ifdef CIPHERLUO
+				encLuo(cip,pt);
+				#endif
+				
+				#ifdef CIPHERLUOMASKED
+				encLuoMasked(cip,pt);
+				#endif
+				
+				#ifdef CIPHERTONG
+				encTxj(pt,cip);
+				#endif
 				
 				restClk=tc_read_count(&TCC0);//定时结束
-				tc_set_overflow_interrupt_level(&TCC0, TC_INT_LVL_OFF);//停止中断
+				//tc_set_overflow_interrupt_level(&TCC0, TC_INT_LVL_OFF);//停止中断
 				tc_write_clock_source(&TCC0,TC_CLKSEL_OFF_gc);//停止计时器
-				ioport_set_pin_low(TRIGGER);//置零 PA0，结束能耗统计
+				//ioport_set_pin_low(TRIGGER);//置零 PA0，结束能耗统计
 				
 				//***********将密文转化为字符*********//
 				hex_print(cip,16,asciibuf);
@@ -150,6 +181,7 @@ int main (void)
 				sendUint16(timeCount);//返回时间消耗
 				sendUint16(restClk);//返回时间消耗
 				//sendUint8(mul_mask_2);
+				timeCount=0;
 				state=IDLE;
 			}
 			else
@@ -231,13 +263,4 @@ void sendUint8(uint8_t value8)//通过串口返回一个8bit寄存器的状态
 		bitMask=bitMask>>1;
 	}
 	usart_serial_putchar(USART_SERIAL,'\n');
-}
-
-void aesEnc(void)
-{
-	uint8_t *w; // expanded key
-
-	w = aes_init(sizeof(key));
-	aes_key_expansion(key, w);
-	aes_cipher(pt,cip,w);
 }

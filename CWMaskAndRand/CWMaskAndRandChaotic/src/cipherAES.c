@@ -5,7 +5,9 @@
  *
  * Based on the document FIPS PUB 197
  */
-#include "aes.h"
+//#define CIPHERAES
+#ifdef CIPHERAES
+#include <asf.h>
 
 /*
  * Addition in GF(2^8)
@@ -463,3 +465,17 @@ void aes_inv_cipher(uint8_t *in, uint8_t *out, uint8_t *w) {
 		}
 	}
 }
+
+#define TRIGGER IOPORT_CREATE_PIN(PORTA,0)//创建触发引脚
+void encAES(uint8_t *pt,uint8_t *cip)
+{
+	extern uint8_t key[16];
+	uint8_t *w; // expanded key
+	
+	w = aes_init(sizeof(key));
+	aes_key_expansion(key, w);
+	ioport_set_pin_high(TRIGGER);
+	aes_cipher(pt,cip,w);
+	ioport_set_pin_low(TRIGGER);
+}
+#endif

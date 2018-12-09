@@ -2,13 +2,19 @@
 # Automatically-generated file. Do not edit or delete the file
 ################################################################################
 
+src\cipherAES.c
+
 src\ASF\xmega\drivers\usart\usart.c
+
+src\cipherLuo.c
 
 src\char_int.c
 
+src\cipherTong.c
+
 src\main.c
 
-src\maskedChaoticEnc.c
+src\cipherLuoMasked.c
 
 src\ASF\common\services\sleepmgr\xmega\sleepmgr.c
 
