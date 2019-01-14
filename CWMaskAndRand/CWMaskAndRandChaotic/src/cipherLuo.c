@@ -110,6 +110,12 @@ void roundKeyGen(float x0, uint8_t randnum[])//num指丢弃前多少个值
 			xn = tentn(xn, a);
 		}
 	}
+	
+	for (uint8_t i = 0; i < 100; i++)
+	{
+		xn = tentn(xn, a);
+	}
+	
 	for (uint8_t i = 0; i < 16 * ROUND; i++)
 	{
 		xn = tentn(xn, a);

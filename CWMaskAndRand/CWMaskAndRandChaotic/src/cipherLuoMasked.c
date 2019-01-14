@@ -104,7 +104,7 @@ void encLuoMasked(uint8_t ciphertext[], uint8_t plaintext[])
 	ioport_set_pin_low(TRIGGER);//置零 PA0，触发能耗统计停止
 	
 	for (uint8_t i = 0; i < 16; i++)
-		ciphertext[i] = intermediate[i];
+		ciphertext[i] = RDKey[i];
 }
 
 //**************************Round Key Gen*****************************//

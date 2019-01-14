@@ -178,8 +178,8 @@ int main (void)
 				}
 				usart_serial_putchar(USART_SERIAL,'\n');
 				
-				sendUint16(timeCount);//返回时间消耗
-				sendUint16(restClk);//返回时间消耗
+				//sendUint16(timeCount);//返回时间消耗
+				//sendUint16(restClk);//返回时间消耗
 				//sendUint8(mul_mask_2);
 				timeCount=0;
 				state=IDLE;

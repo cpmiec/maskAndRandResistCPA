@@ -2,6 +2,8 @@
 # Automatically-generated file. Do not edit or delete the file
 ################################################################################
 
+src\byte_mask_aes.c
+
 src\cipherAES.c
 
 src\ASF\xmega\drivers\usart\usart.c
